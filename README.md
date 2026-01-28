@@ -1,6 +1,6 @@
 # Backend API - User Form with Neon Database
 
-Node.js Express API that stores user form data in a Neon PostgreSQL database.
+Node.js Express API that stores user form data in a Neon PostgreSQL database. Deployable to Netlify Functions.
 
 ## 📋 Features
 
@@ -10,6 +10,7 @@ Node.js Express API that stores user form data in a Neon PostgreSQL database.
 - Error handling
 - CORS enabled
 - Automatic table creation
+- Serverless-ready (Netlify Functions)
 
 ## 🛠️ Setup Instructions
 
@@ -32,13 +33,14 @@ npm install
 Create/Update `.env` file:
 
 ```env
-DATABASE_URL=postgresql://username:password@your-neon-hostname/database-name?sslmode=require
+DATABASE_URL=postgresql://username:password@your-neon-hostname/database-name?sslmode=verify-full
 PORT=5000
 NODE_ENV=development
 ```
 
 ### 4. Run the Server
 
+**Local Development:**
 ```bash
 # Development mode with auto-reload
 npm run dev
@@ -46,6 +48,9 @@ npm run dev
 # Production mode
 npm start
 ```
+
+**Netlify Functions (Serverless):**
+Uses `functions/api.js` - automatically deployed when you deploy to Netlify.
 
 Server will run on `http://localhost:5000`
 
