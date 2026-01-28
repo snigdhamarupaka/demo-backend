@@ -1,20 +1,17 @@
-const serverless = require('serverless-http');
-const express = require('express');
-const cors = require('cors');
-const bodyParser = require('body-parser');
 const { Pool } = require('pg');
 
-const app = express();
-
-// Middleware
-app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-
-// Database connection
+// Simple handler without Express - more reliable for Netlify
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL
 });
+
+// CORS headers
+const headers = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Content-Type': 'application/json'
+};
 
 // Initialize database
 const initializeDatabase = async () => {
@@ -45,8 +42,8 @@ const ensureDbInitialized = async () => {
 };
 
 // Create user
-const createUser = async (req, res) => {
-  const { name, mobile, email } = req.body;
+const createUser = async (body) => {
+  const { name, mobile, email } = body;
 
   if (!name || !mobile || !email) {
     return res.status(400).json({

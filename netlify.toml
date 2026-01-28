@@ -4,14 +4,8 @@
 
 [functions]
   node_bundler = "esbuild"
-  included_files = ["functions/**"]
 
 [[redirects]]
   from = "/api/*"
-  to = "/.netlify/functions/api/:splat"
-  status = 200
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
+  to = "/.netlify/functions/users/:splat"
   status = 200
