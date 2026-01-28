@@ -45,6 +45,13 @@ exports.handler = async (event) => {
   }
   
   const method = event.httpMethod;
+  
+  // Debug logging
+  console.log('Received request:', { 
+    originalPath: event.path, 
+    processedPath: path, 
+    method 
+  });
 
   try {
     // GET /users - Get all users
@@ -189,7 +196,11 @@ exports.handler = async (event) => {
     return {
       statusCode: 404,
       headers,
-      body: JSON.stringify({ success: false, message: 'Route not found' })
+      body: JSON.stringify({ 
+        success: false, 
+        message: 'Route not found',
+        debug: { path, method, originalPath: event.path }
+      })
     };
 
   } catch (error) {
