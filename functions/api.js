@@ -2,15 +2,7 @@ const serverless = require('serverless-http');
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-require('dotenv').config();
-
-const { pool, initializeDatabase } = require('../config/database');
-const {
-  createUser,
-  getAllUsers,
-  getUserById,
-  deleteUser
-} = require('../controllers/userController');
+const { Pool } = require('pg');
 
 const app = express();
 
@@ -19,12 +11,169 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+// Database connection
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL
+});
+
+// Initialize database
+const initializeDatabase = async () => {
+  const createTableQuery = `
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      mobile VARCHAR(10) NOT NULL,
+      email VARCHAR(255) NOT NULL UNIQUE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `;
+  try {
+    await pool.query(createTableQuery);
+    console.log('✓ Database table initialized');
+  } catch (error) {
+    console.error('Error initializing database:', error.message);
+  }
+};
+
 // Initialize database on cold start
 let dbInitialized = false;
 const ensureDbInitialized = async () => {
   if (!dbInitialized) {
     await initializeDatabase();
     dbInitialized = true;
+  }
+};
+
+// Create user
+const createUser = async (req, res) => {
+  const { name, mobile, email } = req.body;
+
+  if (!name || !mobile || !email) {
+    return res.status(400).json({
+      success: false,
+      message: 'All fields (name, mobile, email) are required'
+    });
+  }
+
+  const mobileRegex = /^[0-9]{10}$/;
+  if (!mobileRegex.test(mobile)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Mobile number must be exactly 10 digits'
+    });
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid email format'
+    });
+  }
+
+  try {
+    const query = 'INSERT INTO users (name, mobile, email) VALUES ($1, $2, $3) RETURNING *;';
+    const values = [name, mobile, email];
+    const result = await pool.query(query, values);
+
+    res.status(201).json({
+      success: true,
+      message: 'User created successfully',
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error creating user:', error);
+    if (error.code === '23505') {
+      return res.status(409).json({
+        success: false,
+        message: 'Email already exists'
+      });
+    }
+    res.status(500).json({
+      success: false,
+      message: 'Error creating user',
+      error: error.message
+    });
+  }
+};
+
+// Get all users
+const getAllUsers = async (req, res) => {
+  try {
+    const query = 'SELECT * FROM users ORDER BY created_at DESC;';
+    const result = await pool.query(query);
+
+    res.status(200).json({
+      success: true,
+      count: result.rows.length,
+      data: result.rows
+    });
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching users',
+      error: error.message
+    });
+  }
+};
+
+// Get user by ID
+const getUserById = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const query = 'SELECT * FROM users WHERE id = $1;';
+    const result = await pool.query(query, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching user',
+      error: error.message
+    });
+  }
+};
+
+// Delete user
+const deleteUser = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const query = 'DELETE FROM users WHERE id = $1 RETURNING *;';
+    const result = await pool.query(query, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'User deleted successfully',
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting user',
+      error: error.message
+    });
   }
 };
 
@@ -55,10 +204,10 @@ app.get('/', (req, res) => {
     message: 'User Form API is running on Netlify Functions',
     status: 'OK',
     endpoints: {
-      createUser: 'POST /.netlify/functions/api/users',
-      getAllUsers: 'GET /.netlify/functions/api/users',
-      getUserById: 'GET /.netlify/functions/api/users/:id',
-      deleteUser: 'DELETE /.netlify/functions/api/users/:id'
+      createUser: 'POST /api/users',
+      getAllUsers: 'GET /api/users',
+      getUserById: 'GET /api/users/:id',
+      deleteUser: 'DELETE /api/users/:id'
     }
   });
 });
@@ -74,3 +223,4 @@ app.use((err, req, res, next) => {
 });
 
 module.exports.handler = serverless(app);
+
