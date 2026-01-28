@@ -36,7 +36,14 @@ exports.handler = async (event) => {
 
   await initDB();
 
-  const path = event.path.replace('/.netlify/functions/users', '');
+  // Remove function path prefix to get the actual route
+  let path = event.path.replace('/.netlify/functions/users', '');
+  
+  // Ensure path starts with /
+  if (!path.startsWith('/')) {
+    path = '/' + path;
+  }
+  
   const method = event.httpMethod;
 
   try {
